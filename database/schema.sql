@@ -1,0 +1,145 @@
+-- ============================================================
+-- MEDICAL BOOKING - DATABASE SCHEMA + DỮ LIỆU MẪU
+-- Tạo database: medical_booking
+-- Chạy file này trong MySQL Workbench hoặc terminal
+-- ============================================================
+
+CREATE DATABASE IF NOT EXISTS medical_booking
+  CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+USE medical_booking;
+
+-- ── USERS ────────────────────────────────────────────────────
+CREATE TABLE IF NOT EXISTS users (
+  id              INT PRIMARY KEY AUTO_INCREMENT,
+  full_name       VARCHAR(255) NOT NULL,
+  phone           VARCHAR(20) UNIQUE NOT NULL,
+  password        VARCHAR(255) NOT NULL,
+  role            ENUM('admin','doctor','patient') DEFAULT 'patient',
+  expo_push_token VARCHAR(300),
+  created_at      TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- ── PATIENT PROFILES ─────────────────────────────────────────
+CREATE TABLE IF NOT EXISTS patient_profiles (
+  id               INT PRIMARY KEY AUTO_INCREMENT,
+  user_id          INT NOT NULL,
+  full_name        VARCHAR(255) NOT NULL,
+  date_of_birth    DATE,
+  gender           ENUM('male','female','other'),
+  address          TEXT,
+  insurance_number VARCHAR(50),
+  created_at       TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+);
+
+-- ── DEPARTMENTS (CHUYÊN KHOA) ────────────────────────────────
+CREATE TABLE IF NOT EXISTS departments (
+  id          INT PRIMARY KEY AUTO_INCREMENT,
+  name        VARCHAR(255) NOT NULL,
+  description TEXT
+);
+
+-- ── DOCTORS ──────────────────────────────────────────────────
+CREATE TABLE IF NOT EXISTS doctors (
+  id            INT PRIMARY KEY AUTO_INCREMENT,
+  user_id       INT NOT NULL UNIQUE,
+  department_id INT,
+  specialty     VARCHAR(255),
+  bio           TEXT,
+  FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+  FOREIGN KEY (department_id) REFERENCES departments(id) ON DELETE SET NULL
+);
+
+-- ── SCHEDULES (LỊCH LÀM VIỆC) ───────────────────────────────
+CREATE TABLE IF NOT EXISTS schedules (
+  id            INT PRIMARY KEY AUTO_INCREMENT,
+  doctor_id     INT NOT NULL,
+  department_id INT NOT NULL,
+  date          DATE NOT NULL,
+  start_time    TIME NOT NULL,
+  end_time      TIME NOT NULL,
+  max_patients  INT DEFAULT 20,
+  current_queue INT DEFAULT 0,
+  created_at    TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (doctor_id) REFERENCES doctors(id) ON DELETE CASCADE,
+  FOREIGN KEY (department_id) REFERENCES departments(id)
+);
+
+-- ── APPOINTMENTS (LỊCH HẸN) ─────────────────────────────────
+CREATE TABLE IF NOT EXISTS appointments (
+  id             INT PRIMARY KEY AUTO_INCREMENT,
+  schedule_id    INT NOT NULL,
+  profile_id     INT NOT NULL,
+  queue_number   INT NOT NULL,
+  status         ENUM('waiting','in_progress','done','cancelled') DEFAULT 'waiting',
+  patient_notes  TEXT,
+  payment_method VARCHAR(50) DEFAULT 'cash',
+  created_at     TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (schedule_id) REFERENCES schedules(id),
+  FOREIGN KEY (profile_id)  REFERENCES patient_profiles(id)
+);
+
+-- ── MEDICAL RECORDS (BỆNH ÁN) ───────────────────────────────
+CREATE TABLE IF NOT EXISTS medical_records (
+  id             INT PRIMARY KEY AUTO_INCREMENT,
+  appointment_id INT NOT NULL UNIQUE,
+  diagnosis      TEXT,
+  prescription   TEXT,
+  notes          TEXT,
+  created_at     TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (appointment_id) REFERENCES appointments(id)
+);
+
+-- ── REVIEWS (ĐÁNH GIÁ BÁC SĨ) ───────────────────────────────
+CREATE TABLE IF NOT EXISTS reviews (
+  id             INT PRIMARY KEY AUTO_INCREMENT,
+  appointment_id INT NOT NULL UNIQUE,
+  doctor_id      INT NOT NULL,
+  rating         TINYINT CHECK (rating BETWEEN 1 AND 5),
+  comment        TEXT,
+  created_at     TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (appointment_id) REFERENCES appointments(id),
+  FOREIGN KEY (doctor_id)      REFERENCES doctors(id)
+);
+
+-- ============================================================
+-- DỮ LIỆU MẪU (SEED DATA)
+-- ============================================================
+
+-- Tài khoản admin: SĐT 0900000001 | Mật khẩu: Admin@123
+INSERT INTO users (full_name, phone, password, role) VALUES
+('Quản Trị Viên', '0900000001', 'a$10$PyjIdCah0ol2528Ugrypa.7A5ESM85O5FckfyrPacpxQcmjhkQqoO', 'admin');
+
+-- Chuyên khoa
+INSERT INTO departments (name, description) VALUES
+('Nội khoa',        'Khám và điều trị các bệnh nội tạng'),
+('Ngoại khoa',      'Phẫu thuật và can thiệp ngoại khoa'),
+('Nhi khoa',        'Chăm sóc sức khỏe trẻ em'),
+('Da liễu',         'Các bệnh về da và thẩm mỹ da'),
+('Tai Mũi Họng',    'Khám và điều trị tai, mũi, họng'),
+('Tim mạch',        'Chẩn đoán và điều trị bệnh tim mạch'),
+('Thần kinh',       'Các bệnh về hệ thần kinh'),
+('Cơ xương khớp',   'Điều trị bệnh xương khớp và cột sống');
+
+-- Tài khoản bác sĩ mẫu: SĐT 0900000002 | Mật khẩu: Doctor@123
+INSERT INTO users (full_name, phone, password, role) VALUES
+('BS. Nguyễn Văn An', '0900000002', 'a$10$PyjIdCah0ol2528Ugrypa.7A5ESM85O5FckfyrPacpxQcmjhkQqoO', 'doctor'),
+('BS. Trần Thị Bình',  '0900000003', 'a$10$PyjIdCah0ol2528Ugrypa.7A5ESM85O5FckfyrPacpxQcmjhkQqoO', 'doctor');
+
+INSERT INTO doctors (user_id, department_id, specialty, bio) VALUES
+(2, 1, 'Nội tổng quát',  'Bác sĩ có 10 năm kinh nghiệm khám và điều trị bệnh nội khoa tổng quát.'),
+(3, 3, 'Nhi khoa tổng quát', 'Chuyên gia chăm sóc sức khỏe trẻ em với hơn 8 năm kinh nghiệm.');
+
+-- Tài khoản bệnh nhân mẫu: SĐT 0900000004 | Mật khẩu: Patient@123
+INSERT INTO users (full_name, phone, password, role) VALUES
+('Lê Văn Cường', '0900000004', 'a$10$PyjIdCah0ol2528Ugrypa.7A5ESM85O5FckfyrPacpxQcmjhkQqoO', 'patient');
+
+INSERT INTO patient_profiles (user_id, full_name, date_of_birth, gender, address) VALUES
+(4, 'Lê Văn Cường', '1990-05-15', 'male', 'Quận 1, TP. Hồ Chí Minh');
+
+-- ============================================================
+-- GHI CHÚ: Tất cả mật khẩu mẫu đều là "Admin@123" / "Doctor@123" / "Patient@123"
+-- Hash tương ứng với: a$10$PyjIdCah0ol2528Ugrypa.7A5ESM85O5FckfyrPacpxQcmjhkQqoO
+-- THAY HASH NÀY bằng cách chạy: require('bcryptjs').hashSync('MatKhauMoi@123', 10)
+-- hoặc sử dụng endpoint /api/admin/doctors để tạo tài khoản mới (tự hash)
+-- ============================================================
