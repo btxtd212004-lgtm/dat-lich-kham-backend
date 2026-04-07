@@ -18,3 +18,4 @@ app.get('/', (req, res) => res.json({ message: 'Medical Booking API is running' 
 
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => console.log(`✅ Server chạy tại http://localhost:${PORT}`));
+app.use('/api/news', require('./routes/news'));
