@@ -108,7 +108,7 @@ CREATE TABLE IF NOT EXISTS reviews (
 
 -- Tài khoản admin: SĐT 0900000001 | Mật khẩu: Admin@123
 INSERT INTO users (full_name, phone, password, role) VALUES
-('Quản Trị Viên', '0900000001', 'a$10$PyjIdCah0ol2528Ugrypa.7A5ESM85O5FckfyrPacpxQcmjhkQqoO', 'admin');
+('Quản Trị Viên', '0900000001', '$2a$10$PyjIdCah0ol2528Ugrypa.7A5ESM85O5FckfyrPacpxQcmjhkQqoO', 'admin');
 
 -- Chuyên khoa
 INSERT INTO departments (name, description) VALUES
@@ -123,8 +123,8 @@ INSERT INTO departments (name, description) VALUES
 
 -- Tài khoản bác sĩ mẫu: SĐT 0900000002 | Mật khẩu: Doctor@123
 INSERT INTO users (full_name, phone, password, role) VALUES
-('BS. Nguyễn Văn An', '0900000002', 'a$10$PyjIdCah0ol2528Ugrypa.7A5ESM85O5FckfyrPacpxQcmjhkQqoO', 'doctor'),
-('BS. Trần Thị Bình',  '0900000003', 'a$10$PyjIdCah0ol2528Ugrypa.7A5ESM85O5FckfyrPacpxQcmjhkQqoO', 'doctor');
+('BS. Nguyễn Văn An', '0900000002', '$2a$10$PyjIdCah0ol2528Ugrypa.7A5ESM85O5FckfyrPacpxQcmjhkQqoO', 'doctor'),
+('BS. Trần Thị Bình',  '0900000003', '$2a$10$PyjIdCah0ol2528Ugrypa.7A5ESM85O5FckfyrPacpxQcmjhkQqoO', 'doctor');
 
 INSERT INTO doctors (user_id, department_id, specialty, bio) VALUES
 (2, 1, 'Nội tổng quát',  'Bác sĩ có 10 năm kinh nghiệm khám và điều trị bệnh nội khoa tổng quát.'),
@@ -132,7 +132,7 @@ INSERT INTO doctors (user_id, department_id, specialty, bio) VALUES
 
 -- Tài khoản bệnh nhân mẫu: SĐT 0900000004 | Mật khẩu: Patient@123
 INSERT INTO users (full_name, phone, password, role) VALUES
-('Lê Văn Cường', '0900000004', 'a$10$PyjIdCah0ol2528Ugrypa.7A5ESM85O5FckfyrPacpxQcmjhkQqoO', 'patient');
+('Lê Văn Cường', '0900000004', '$2a$10$PyjIdCah0ol2528Ugrypa.7A5ESM85O5FckfyrPacpxQcmjhkQqoO', 'patient');
 
 INSERT INTO patient_profiles (user_id, full_name, date_of_birth, gender, address) VALUES
 (4, 'Lê Văn Cường', '1990-05-15', 'male', 'Quận 1, TP. Hồ Chí Minh');
@@ -143,3 +143,10 @@ INSERT INTO patient_profiles (user_id, full_name, date_of_birth, gender, address
 -- THAY HASH NÀY bằng cách chạy: require('bcryptjs').hashSync('MatKhauMoi@123', 10)
 -- hoặc sử dụng endpoint /api/admin/doctors để tạo tài khoản mới (tự hash)
 -- ============================================================
+CREATE TABLE IF NOT EXISTS news (
+  id         INT PRIMARY KEY AUTO_INCREMENT,
+  title      VARCHAR(255) NOT NULL,
+  content    TEXT NOT NULL,
+  image_url  LONGTEXT,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);

@@ -189,5 +189,42 @@ router.get('/appointments', async (req, res) => {
     res.json({ success: true, data: rows });
   } catch (e) { res.json({ success: false, message: 'Lỗi server' }); }
 });
+// ─── QUẢN LÝ TIN TỨC ────────────────────────────────────────────────────────
 
+router.get('/news', async (req, res) => {
+  try {
+    const [rows] = await db.query('SELECT * FROM news ORDER BY created_at DESC');
+    res.json({ success: true, data: rows });
+  } catch (e) { res.json({ success: false, message: 'Lỗi server' }); }
+});
+
+router.post('/news', async (req, res) => {
+  const { title, content, image_url } = req.body;
+  if (!title || !content) return res.json({ success: false, message: 'Vui lòng nhập tiêu đề và nội dung' });
+  try {
+    const [r] = await db.query(
+      'INSERT INTO news (title, content, image_url) VALUES (?,?,?)',
+      [title, content, image_url || null]
+    );
+    res.json({ success: true, data: { id: r.insertId } });
+  } catch (e) { res.json({ success: false, message: 'Lỗi server' }); }
+});
+
+router.put('/news/:id', async (req, res) => {
+  const { title, content, image_url } = req.body;
+  try {
+    await db.query(
+      'UPDATE news SET title=?, content=?, image_url=? WHERE id=?',
+      [title, content, image_url || null, req.params.id]
+    );
+    res.json({ success: true });
+  } catch (e) { res.json({ success: false, message: 'Lỗi server' }); }
+});
+
+router.delete('/news/:id', async (req, res) => {
+  try {
+    await db.query('DELETE FROM news WHERE id=?', [req.params.id]);
+    res.json({ success: true });
+  } catch (e) { res.json({ success: false, message: 'Lỗi server' }); }
+});
 module.exports = router;
