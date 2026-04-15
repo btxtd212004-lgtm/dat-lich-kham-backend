@@ -28,6 +28,11 @@ CREATE TABLE IF NOT EXISTS patient_profiles (
   gender           ENUM('male','female','other'),
   address          TEXT,
   insurance_number VARCHAR(50),
+  cccd             VARCHAR(12),
+  ethnicity        VARCHAR(50),
+  occupation       VARCHAR(100),
+  height           FLOAT,
+  weight           FLOAT,
   created_at       TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 );

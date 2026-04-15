@@ -69,6 +69,10 @@ router.put('/:id/cancel', async (req, res) => {
       JOIN patient_profiles pp ON a.profile_id = pp.id
       WHERE a.id = ? AND pp.user_id = ?`, [req.params.id, req.user.id]);
     if (!rows.length) return res.json({ success: false, message: 'Không tìm thấy lịch hẹn' });
+    const createdAt = new Date(rows[0].created_at);
+    const now = new Date();
+    const diffHours = (now - createdAt) / (1000 * 60 * 60);
+    if (diffHours > 5) return res.json({ success: false, message: 'Đã quá 5 giờ kể từ khi đặt lịch, không thể hủy!' });
     await db.query(`UPDATE appointments SET status='cancelled' WHERE id=?`, [req.params.id]);
     res.json({ success: true });
   } catch (e) { res.json({ success: false, message: 'Lỗi server' }); }
