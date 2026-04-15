@@ -63,11 +63,11 @@ router.post('/forgot-password', async (req, res) => {
 
 // POST /api/auth/profiles - thêm hồ sơ bệnh nhân
 router.post('/profiles', auth, async (req, res) => {
-  const { full_name, date_of_birth, gender, address, insurance_number } = req.body;
+  const { full_name, date_of_birth, gender, address, insurance_number, cccd, ethnicity, occupation, height, weight } = req.body;
   try {
     const [r] = await db.query(
-      'INSERT INTO patient_profiles (user_id, full_name, date_of_birth, gender, address, insurance_number) VALUES (?,?,?,?,?,?)',
-      [req.user.id, full_name, date_of_birth, gender, address, insurance_number]
+      'INSERT INTO patient_profiles (user_id, full_name, date_of_birth, gender, address, insurance_number, cccd, ethnicity, occupation, height, weight) VALUES (?,?,?,?,?,?,?,?,?,?,?)',
+      [req.user.id, full_name, date_of_birth, gender, address, insurance_number, cccd, ethnicity, occupation, height, weight]
     );
     res.json({ success: true, data: { id: r.insertId } });
   } catch (e) { res.json({ success: false, message: 'Lỗi server' }); }
@@ -75,11 +75,11 @@ router.post('/profiles', auth, async (req, res) => {
 
 // PUT /api/auth/profiles/:id - sửa hồ sơ
 router.put('/profiles/:id', auth, async (req, res) => {
-  const { full_name, date_of_birth, gender, address, insurance_number } = req.body;
+  const { full_name, date_of_birth, gender, address, insurance_number, cccd, ethnicity, occupation, height, weight } = req.body;
   try {
     await db.query(
-      'UPDATE patient_profiles SET full_name=?, date_of_birth=?, gender=?, address=?, insurance_number=? WHERE id=? AND user_id=?',
-      [full_name, date_of_birth, gender, address, insurance_number, req.params.id, req.user.id]
+      'INSERT INTO patient_profiles (user_id, full_name, date_of_birth, gender, address, insurance_number, cccd, ethnicity, occupation, height, weight) VALUES (?,?,?,?,?,?,?,?,?,?,?)',
+      [req.user.id, full_name, date_of_birth, gender, address, insurance_number, cccd, ethnicity, occupation, height, weight]
     );
     res.json({ success: true });
   } catch (e) { res.json({ success: false, message: 'Lỗi server' }); }
