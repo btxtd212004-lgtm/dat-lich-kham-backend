@@ -78,7 +78,7 @@ router.put('/profiles/:id', auth, async (req, res) => {
   const { full_name, date_of_birth, gender, address, insurance_number, cccd, ethnicity, occupation, height, weight } = req.body;
   try {
     await db.query(
-      'INSERT INTO patient_profiles (user_id, full_name, date_of_birth, gender, address, insurance_number, cccd, ethnicity, occupation, height, weight) VALUES (?,?,?,?,?,?,?,?,?,?,?)',
+      'UPDATE patient_profiles (user_id, full_name, date_of_birth, gender, address, insurance_number, cccd, ethnicity, occupation, height, weight) VALUES (?,?,?,?,?,?,?,?,?,?,?)',
       [req.user.id, full_name, date_of_birth, gender, address, insurance_number, cccd, ethnicity, occupation, height, weight]
     );
     res.json({ success: true });

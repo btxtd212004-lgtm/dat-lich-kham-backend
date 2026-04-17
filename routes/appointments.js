@@ -55,6 +55,7 @@ router.get('/my', async (req, res) => {
       JOIN users u_doc ON d.user_id = u_doc.id
       JOIN departments dep ON s.department_id = dep.id
       JOIN patient_profiles pp ON a.profile_id = pp.id
+      LEFT JOIN medical_records mr ON mr.appointment_id = a.id
       WHERE ${where}
       ORDER BY s.date DESC, a.queue_number`, params);
     res.json({ success: true, data: rows });
