@@ -78,8 +78,8 @@ router.put('/profiles/:id', auth, async (req, res) => {
   const { full_name, date_of_birth, gender, address, insurance_number, cccd, ethnicity, occupation, height, weight } = req.body;
   try {
     await db.query(
-      'UPDATE patient_profiles (user_id, full_name, date_of_birth, gender, address, insurance_number, cccd, ethnicity, occupation, height, weight) VALUES (?,?,?,?,?,?,?,?,?,?,?)',
-      [req.user.id, full_name, date_of_birth, gender, address, insurance_number, cccd, ethnicity, occupation, height, weight]
+      'UPDATE patient_profiles SET full_name=?, date_of_birth=?, gender=?, address=?, insurance_number=?, cccd=?, ethnicity=?, occupation=?, height=?, weight=? WHERE id=? AND user_id=?',
+      [full_name, date_of_birth, gender, address, insurance_number, cccd, ethnicity, occupation, height, weight, req.params.id, req.user.id]
     );
     res.json({ success: true });
   } catch (e) { res.json({ success: false, message: 'Lỗi server' }); }
