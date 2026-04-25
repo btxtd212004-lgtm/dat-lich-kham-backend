@@ -88,6 +88,17 @@ router.put('/profiles/:id', auth, async (req, res) => {
 // DELETE /api/auth/profiles/:id
 router.delete('/profiles/:id', auth, async (req, res) => {
   try {
+    // Kiểm tra hồ sơ thuộc user này
+    const [[profile]] = await db.query('SELECT id FROM patient_profiles WHERE id=? AND user_id=?', [req.params.id, req.user.id]);
+    if (!profile) return res.json({ success: false, message: 'Không tìm thấy hồ sơ' });
+
+    // Kiểm tra còn lịch chờ khám không
+    const [[{ cnt }]] = await db.query(
+      `SELECT COUNT(*) AS cnt FROM appointments WHERE profile_id=? AND status='waiting'`,
+      [req.params.id]
+    );
+    if (cnt > 0) return res.json({ success: false, message: 'Hồ sơ này còn lịch khám đang chờ. Vui lòng hủy lịch trước khi xóa hồ sơ.' });
+
     await db.query('DELETE FROM patient_profiles WHERE id=? AND user_id=?', [req.params.id, req.user.id]);
     res.json({ success: true });
   } catch (e) { res.json({ success: false, message: 'Lỗi server' }); }

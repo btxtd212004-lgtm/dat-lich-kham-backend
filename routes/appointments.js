@@ -8,29 +8,47 @@ router.use(auth);
 // POST /api/appointments - đặt lịch
 router.post('/', async (req, res) => {
   const { schedule_id, profile_id, patient_notes, payment_method } = req.body;
+  const conn = await db.getConnection();
   try {
-    // Kiểm tra slot còn không
-    const [[sch]] = await db.query(`
+    await conn.beginTransaction();
+
+    // Kiểm tra profile thuộc user đang đăng nhập
+    const [[profileCheck]] = await conn.query(
+      'SELECT id FROM patient_profiles WHERE id=? AND user_id=?',
+      [profile_id, req.user.id]
+    );
+    if (!profileCheck) {
+      await conn.rollback();
+      return res.json({ success: false, message: 'Hồ sơ không hợp lệ' });
+    }
+
+    // Lock row để tránh race condition
+    const [[sch]] = await conn.query(`
       SELECT s.max_patients,
              (SELECT COUNT(*) FROM appointments WHERE schedule_id=s.id AND status != 'cancelled') AS booked
-      FROM schedules s WHERE s.id = ?`, [schedule_id]);
-    if (!sch) return res.json({ success: false, message: 'Không tìm thấy lịch' });
-    if (sch.booked >= sch.max_patients) return res.json({ success: false, message: 'Lịch đã đầy, vui lòng chọn lịch khác' });
+      FROM schedules s WHERE s.id = ? FOR UPDATE`, [schedule_id]);
+    if (!sch) { await conn.rollback(); return res.json({ success: false, message: 'Không tìm thấy lịch' }); }
+    if (sch.booked >= sch.max_patients) { await conn.rollback(); return res.json({ success: false, message: 'Lịch đã đầy, vui lòng chọn lịch khác' }); }
 
     // Kiểm tra trùng lịch
-    const [dupCheck] = await db.query(`
+    const [dupCheck] = await conn.query(`
       SELECT a.id FROM appointments a
-      JOIN schedules s ON a.schedule_id = s.id
-      WHERE a.profile_id = ? AND s.id = ? AND a.status != 'cancelled'`, [profile_id, schedule_id]);
-    if (dupCheck.length) return res.json({ success: false, message: 'Hồ sơ này đã có lịch khám trong buổi này' });
+      WHERE a.profile_id = ? AND a.schedule_id = ? AND a.status != 'cancelled'`, [profile_id, schedule_id]);
+    if (dupCheck.length) { await conn.rollback(); return res.json({ success: false, message: 'Hồ sơ này đã có lịch khám trong buổi này' }); }
 
     const queue_number = sch.booked + 1;
-    const [r] = await db.query(
+    const [r] = await conn.query(
       'INSERT INTO appointments (schedule_id, profile_id, queue_number, patient_notes, payment_method) VALUES (?,?,?,?,?)',
       [schedule_id, profile_id, queue_number, patient_notes || '', payment_method || 'cash']
     );
+    await conn.commit();
     res.json({ success: true, data: { id: r.insertId, queueNumber: queue_number } });
-  } catch (e) { res.json({ success: false, message: 'Lỗi server' }); }
+  } catch (e) {
+    await conn.rollback();
+    res.json({ success: false, message: 'Lỗi server' });
+  } finally {
+    conn.release();
+  }
 });
 
 // GET /api/appointments/my - lịch của tôi
@@ -66,14 +84,22 @@ router.get('/my', async (req, res) => {
 router.put('/:id/cancel', async (req, res) => {
   try {
     const [rows] = await db.query(`
-      SELECT a.id, a.created_at FROM appointments a
+      SELECT a.id, a.status, s.date, s.start_time FROM appointments a
       JOIN patient_profiles pp ON a.profile_id = pp.id
+      JOIN schedules s ON a.schedule_id = s.id
       WHERE a.id = ? AND pp.user_id = ?`, [req.params.id, req.user.id]);
     if (!rows.length) return res.json({ success: false, message: 'Không tìm thấy lịch hẹn' });
-    const createdAt = new Date(rows[0].created_at);
+    if (rows[0].status === 'cancelled') return res.json({ success: false, message: 'Lịch đã được hủy trước đó' });
+    if (rows[0].status === 'done') return res.json({ success: false, message: 'Lịch đã khám xong, không thể hủy' });
+
+    // Cho phép hủy nếu còn trước giờ khám ít nhất 5 tiếng
+    const apptDate = new Date(rows[0].date);
+    const [h, m] = rows[0].start_time.split(':').map(Number);
+    apptDate.setHours(h, m, 0, 0);
     const now = new Date();
-    const diffHours = (now - createdAt) / (1000 * 60 * 60);
-    if (diffHours > 5) return res.json({ success: false, message: 'Đã quá 5 giờ kể từ khi đặt lịch, không thể hủy!' });
+    const diffHours = (apptDate - now) / (1000 * 60 * 60);
+    if (diffHours < 5) return res.json({ success: false, message: 'Chỉ được hủy trước giờ khám ít nhất 5 tiếng!' });
+
     await db.query(`UPDATE appointments SET status='cancelled' WHERE id=?`, [req.params.id]);
     res.json({ success: true });
   } catch (e) { res.json({ success: false, message: 'Lỗi server' }); }
