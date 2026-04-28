@@ -130,4 +130,28 @@ router.get('/appointments/:id/record', async (req, res) => {
   } catch (e) { res.json({ success: false, message: 'Lỗi server' }); }
 });
 
+// GET /api/doctor/patient-history/:profileId - lịch sử khám cũ của bệnh nhân
+router.get('/patient-history/:profileId', async (req, res) => {
+  try {
+    const exclude = req.query.exclude || 0;
+    const [rows] = await db.query(`
+      SELECT a.id, s.date, dep.name AS department_name,
+             u_doc.full_name AS doctor_name,
+             mr.diagnosis, mr.prescription, mr.notes, mr.created_at
+      FROM appointments a
+      JOIN schedules s ON a.schedule_id = s.id
+      JOIN doctors d ON s.doctor_id = d.id
+      JOIN users u_doc ON d.user_id = u_doc.id
+      JOIN departments dep ON s.department_id = dep.id
+      LEFT JOIN medical_records mr ON mr.appointment_id = a.id
+      WHERE a.profile_id = ?
+        AND a.status = 'done'
+        AND a.id != ?
+      ORDER BY s.date DESC, a.id DESC
+      LIMIT 10
+    `, [req.params.profileId, exclude]);
+    res.json({ success: true, data: rows });
+  } catch (e) { res.json({ success: false, message: 'Lỗi server' }); }
+});
+
 module.exports = router;
