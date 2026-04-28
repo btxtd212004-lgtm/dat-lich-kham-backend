@@ -59,6 +59,16 @@ router.get('/my', async (req, res) => {
     if (!profiles.length) return res.json({ success: true, data: [] });
     const profileIds = profiles.map(p => p.id);
 
+    // Tự động chuyển các lịch waiting/in_progress của ngày đã qua → done
+    await db.query(`
+      UPDATE appointments a
+      JOIN schedules s ON a.schedule_id = s.id
+      SET a.status = 'done'
+      WHERE a.profile_id IN (${profileIds.join(',')})
+        AND a.status IN ('waiting', 'in_progress')
+        AND s.date < CURDATE()
+    `);
+
     let where = `a.profile_id IN (${profileIds.join(',')})`;
     const params = [];
     if (status) { where += ' AND a.status = ?'; params.push(status); }
