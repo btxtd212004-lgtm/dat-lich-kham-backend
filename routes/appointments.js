@@ -76,7 +76,8 @@ router.get('/my', async (req, res) => {
     const [rows] = await db.query(`
       SELECT a.*, pp.full_name AS patient_name,
              u_doc.full_name AS doctor_name, dep.name AS department_name,
-             s.date, s.start_time, s.end_time, s.current_queue
+             s.date, s.start_time, s.end_time, s.current_queue,
+             mr.diagnosis, mr.prescription, mr.notes AS treatment_notes
       FROM appointments a
       JOIN schedules s ON a.schedule_id = s.id
       JOIN doctors d ON s.doctor_id = d.id
