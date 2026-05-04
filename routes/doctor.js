@@ -31,7 +31,7 @@ router.get('/queue', async (req, res) => {
     const doctor_id = doc[0].id;
 
     const [rows] = await db.query(`
-      SELECT a.id, a.queue_number, a.status, a.patient_notes,
+      SELECT a.id, a.queue_number, a.status, a.patient_notes, a.profile_id,
              pp.full_name AS patient_name, pp.date_of_birth, pp.gender, pp.insurance_number,
              s.id AS schedule_id, s.date, s.start_time, s.end_time, s.current_queue,
              dep.name AS department_name,
@@ -148,8 +148,7 @@ router.get('/patient-history/:profileId', async (req, res) => {
         AND a.status = 'done'
         AND a.id != ?
       ORDER BY s.date DESC, a.id DESC
-      LIMIT 10
-    `, [req.params.profileId, exclude]);
+      LIMIT 10`, [req.params.profileId, exclude]);
     res.json({ success: true, data: rows });
   } catch (e) { res.json({ success: false, message: 'Lỗi server' }); }
 });
