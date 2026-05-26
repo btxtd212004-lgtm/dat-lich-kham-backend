@@ -19,6 +19,59 @@ router.post('/login', async (req, res) => {
   } catch (e) { res.json({ success: false, message: 'Lỗi server' }); }
 });
 
+// Lưu OTP tạm thời
+const otpStore = new Map();
+
+// POST /api/auth/send-otp
+router.post('/send-otp', async (req, res) => {
+  const { phone, full_name, password } = req.body;
+  if (!phone || !full_name || !password)
+    return res.json({ success: false, message: 'Thiếu thông tin' });
+  try {
+    const [ex] = await db.query('SELECT id FROM users WHERE phone = ?', [phone]);
+    if (ex.length)
+      return res.json({ success: false, message: 'Số điện thoại đã được đăng ký' });
+
+    const otp = Math.floor(100000 + Math.random() * 900000).toString();
+    const expiry = Date.now() + 5 * 60 * 1000;
+    const hashed = await bcrypt.hash(password, 10);
+    otpStore.set(phone, { otp, expiry, data: { full_name, phone, hashed } });
+
+    console.log(`[OTP] SĐT: ${phone} | Mã: ${otp}`);
+
+    res.json({ success: true, message: 'Đã gửi OTP về số điện thoại của bạn' });
+  } catch (e) {
+    console.error(e);
+    res.json({ success: false, message: 'Lỗi server' });
+  }
+});
+
+// POST /api/auth/verify-otp
+router.post('/verify-otp', async (req, res) => {
+  const { phone, otp } = req.body;
+  const record = otpStore.get(phone);
+  if (!record)
+    return res.json({ success: false, message: 'Chưa gửi OTP hoặc OTP đã hết hạn' });
+  if (Date.now() > record.expiry) {
+    otpStore.delete(phone);
+    return res.json({ success: false, message: 'OTP đã hết hạn, vui lòng gửi lại' });
+  }
+  if (record.otp !== otp)
+    return res.json({ success: false, message: 'Mã OTP không đúng' });
+  try {
+    const { full_name, hashed } = record.data;
+    await db.query(
+  'INSERT INTO users (phone, password, role) VALUES (?, ?, ?)',
+  [phone, hashed, 'patient']
+);
+    otpStore.delete(phone);
+    res.json({ success: true, message: 'Đăng ký thành công' });
+  } catch (e) {
+    console.error(e);
+    res.json({ success: false, message: 'Lỗi server' });
+  }
+});
+
 // POST /api/auth/register
 router.post('/register', async (req, res) => {
   const { full_name, phone, password } = req.body;
@@ -61,7 +114,7 @@ router.post('/forgot-password', async (req, res) => {
   } catch (e) { res.json({ success: false, message: 'Lỗi server' }); }
 });
 
-// POST /api/auth/profiles - thêm hồ sơ bệnh nhân
+// POST /api/auth/profiles
 router.post('/profiles', auth, async (req, res) => {
   const { full_name, date_of_birth, gender, address, insurance_number, cccd, ethnicity, occupation, height, weight } = req.body;
   try {
@@ -73,7 +126,7 @@ router.post('/profiles', auth, async (req, res) => {
   } catch (e) { res.json({ success: false, message: 'Lỗi server' }); }
 });
 
-// PUT /api/auth/profiles/:id - sửa hồ sơ
+// PUT /api/auth/profiles/:id
 router.put('/profiles/:id', auth, async (req, res) => {
   const { full_name, date_of_birth, gender, address, insurance_number, cccd, ethnicity, occupation, height, weight } = req.body;
   try {
@@ -88,17 +141,8 @@ router.put('/profiles/:id', auth, async (req, res) => {
 // DELETE /api/auth/profiles/:id
 router.delete('/profiles/:id', auth, async (req, res) => {
   try {
-    // Kiểm tra hồ sơ thuộc user này
     const [[profile]] = await db.query('SELECT id FROM patient_profiles WHERE id=? AND user_id=?', [req.params.id, req.user.id]);
     if (!profile) return res.json({ success: false, message: 'Không tìm thấy hồ sơ' });
-
-    // Kiểm tra còn lịch chờ khám không
-    const [[{ cnt }]] = await db.query(
-      `SELECT COUNT(*) AS cnt FROM appointments WHERE profile_id=? AND status='waiting'`,
-      [req.params.id]
-    );
-    if (cnt > 0) return res.json({ success: false, message: 'Hồ sơ này còn lịch khám đang chờ. Vui lòng hủy lịch trước khi xóa hồ sơ.' });
-
     await db.query('DELETE FROM patient_profiles WHERE id=? AND user_id=?', [req.params.id, req.user.id]);
     res.json({ success: true });
   } catch (e) { res.json({ success: false, message: 'Lỗi server' }); }
